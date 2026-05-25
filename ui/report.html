@@ -27,11 +27,11 @@ body { font-family: 'Montserrat', sans-serif; background: #0a1628; color: var(--
 .brand { font-size: 15px; font-weight: 800; } .brand span { color: var(--teal); }
 
 /* HERO */
-.hero { padding: 40px 48px; text-align: center; border-bottom: 1px solid #1e3560; background: var(--bg); }
-.hero-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--teal); margin-bottom: 10px; display: block; }
-.hero-title { font-size: 30px; font-weight: 900; line-height: 1.1; margin-bottom: 8px; }
-.hero-title em { color: var(--teal); font-style: normal; }
-.hero-sub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+.hero { display: none; }
+
+
+
+
 .biz-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 40px; padding: 7px 18px; font-size: 12px; flex-wrap: wrap; justify-content: center; }
 .biz-pill-name { font-weight: 700; } .biz-pill-sep { color: var(--border); }
 .biz-pill-url { color: var(--teal); } .biz-pill-addr { color: var(--muted); font-size: 11px; }
@@ -196,17 +196,20 @@ body { font-family: 'Montserrat', sans-serif; background: #0a1628; color: var(--
 </div>
 
 <!-- HERO -->
-<div style="position:relative;height:300px;display:flex;align-items:stretch;overflow:hidden;border-bottom:1px solid var(--border);">
-  <!-- Left dark panel - text -->
-  <div style="position:relative;z-index:1;width:55%;background:#080d1a;padding:40px 48px;display:flex;flex-direction:column;justify-content:center;flex-shrink:0;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#64748b;margin-bottom:14px;">Revenue Report Results</div>
-    <h1 style="font-size:38px;font-weight:900;line-height:1.1;color:#fff;margin:0 0 20px;font-family:Montserrat,sans-serif;">How much revenue is<br>your website <span style="color:#f97316;">burning?</span></h1>
-    <div class="biz-pill" style="align-self:flex-start;">
-      <span class="biz-pill-name" id="bizName">Business</span>
-      <span class="biz-pill-sep">·</span>
-      <span class="biz-pill-url" id="bizUrl">website.com</span>
-      <span class="biz-pill-sep">·</span>
-      <span class="biz-pill-addr" id="bizAddr"></span>
+<div style="position:relative;height:360px;display:flex;align-items:stretch;overflow:hidden;border-bottom:1px solid var(--border);">
+  <!-- Left dark panel -->
+  <div style="position:relative;z-index:1;width:58%;background:#080d1a;padding:44px 48px;display:flex;flex-direction:column;justify-content:space-between;flex-shrink:0;">
+    <div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#64748b;margin-bottom:18px;">Revenue Report Results</div>
+      <h1 style="font-size:42px;font-weight:900;line-height:1.1;color:#fff;margin:0;font-family:Montserrat,sans-serif;">How much revenue<br>is your website<br><span style="color:#f97316;">burning?</span></h1>
+    </div>
+    <!-- Pill at bottom left -->
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:7px 14px;width:fit-content;max-width:100%;overflow:hidden;">
+      <span style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="bizName">Business</span>
+      <span style="color:#334155;font-size:11px;">·</span>
+      <span style="font-size:11px;color:var(--teal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="bizUrl">website.com</span>
+      <span style="color:#334155;font-size:11px;">·</span>
+      <span style="font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="bizAddr"></span>
     </div>
   </div>
   <!-- Right flame image -->
