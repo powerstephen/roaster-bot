@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roaster Bot</title>
+<style>
+:root {
+  --bg: #0a0f1e;
+  --surface: #0f172a;
+  --surface2: #1e293b;
+  --border: #1e3a5f;
+  --teal: #00b4d8;
+  --teal2: #0096b7;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --red: #ef4444;
+  --orange: #f97316;
+  --amber: #f59e0b;
+  --green: #10b981;
+  --red-bg: rgba(239,68,68,0.1);
+  --orange-bg: rgba(249,115,22,0.1);
+  --amber-bg: rgba(245,158,11,0.1);
+  --green-bg: rgba(16,185,129,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Header */
+header { padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--surface); }
+.logo { display: flex; align-items: center; gap: 10px; }
+.flame { font-size: 22px; }
+.logo-text { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+.logo-text span { color: var(--teal); }
+.tagline { font-size: 12px; color: var(--muted); }
+.status-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.dot.live { background: var(--teal); box-shadow: 0 0 6px var(--teal); animation: blink 1.4s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Search bar */
+.search-wrap { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 32px; }
+.search-bar { display: grid; grid-template-columns: 1fr 1fr 110px 110px auto; gap: 12px; align-items: end; max-width: 900px; }
+.field label { display: block; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.field input, .field select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 13px; outline: none; transition: border-color 0.15s; }
+.field input:focus, .field select:focus { border-color: var(--teal); }
+.field input::placeholder { color: var(--muted); }
+.btn-roast { background: linear-gradient(135deg, var(--teal), var(--teal2)); color: #0a0f1e; border: none; border-radius: 8px; padding: 11px 22px; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; letter-spacing: 0.3px; transition: opacity 0.15s; }
+.btn-roast:hover { opacity: 0.9; }
+.btn-roast:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Single URL */
+.single-wrap { margin-top: 12px; display: flex; gap: 10px; align-items: center; max-width: 900px; }
+.single-wrap input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; color: var(--text); font-size: 12px; outline: none; }
+.single-wrap input:focus { border-color: var(--teal); }
+.btn-single { background: none; border: 1px solid var(--teal); border-radius: 8px; color: var(--teal); padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-single:hover { background: rgba(0,180,216,0.08); }
+
+/* Log */
+.log-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 32px; font-family: monospace; font-size: 11px; color: var(--muted); min-height: 32px; display: none; }
+
+/* Summary */
+.summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border-bottom: 1px solid var(--border); display: none; }
+.stat { padding: 16px 24px; border-right: 1px solid var(--border); text-align: center; }
+.stat:last-child { border-right: none; }
+.stat-n { font-size: 26px; font-weight: 900; color: var(--teal); }
+.stat-l { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Main content */
+.content { padding: 24px 32px; }
+
+/* Results grid */
+.results { display: flex; flex-direction: column; gap: 12px; }
+
+/* Business card */
+.biz-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color 0.15s; }
+.biz-card:hover { border-color: rgba(0,180,216,0.4); }
+.biz-header { padding: 16px 20px; display: grid; grid-template-columns: 36px 1fr auto; gap: 14px; align-items: center; cursor: pointer; }
+.biz-rank { font-size: 16px; font-weight: 900; color: var(--muted); text-align: center; }
+.biz-info { display: flex; flex-direction: column; gap: 3px; }
+.biz-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.biz-meta { font-size: 11px; color: var(--muted); }
+.biz-meta a { color: var(--teal); text-decoration: none; }
+.biz-meta a:hover { text-decoration: underline; }
+.biz-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.opp-score { font-size: 32px; font-weight: 900; line-height: 1; }
+.opp-label { font-size: 10px; color: var(--muted); }
+.grade-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+
+/* Dimensions row */
+.dims-row { padding: 12px 20px 16px; border-top: 1px solid var(--border); display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; }
+.dim-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.dim-ring { position: relative; width: 48px; height: 48px; }
+.dim-ring svg { transform: rotate(-90deg); }
+.dim-val { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 11px; font-weight: 800; }
+.dim-name { font-size: 9px; color: var(--muted); text-align: center; }
+.dim-flag { font-size: 8px; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+.flag-critical { background: rgba(239,68,68,0.15); color: #fca5a5; }
+.flag-work { background: rgba(245,158,11,0.12); color: #fcd34d; }
+.flag-ok { background: rgba(16,185,129,0.12); color: #6ee7b7; }
+
+/* Empty / loading states */
+.empty { text-align: center; padding: 80px 20px; color: var(--muted); }
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty h2 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+.empty p { font-size: 13px; }
+
+/* Export button */
+.export-row { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.btn-export { background: none; border: 1px solid var(--teal); border-radius: 8px; color: var(--teal); padding: 8px 18px; font-size: 12px; font-weight: 600; cursor: pointer; display: none; }
+.btn-export:hover { background: rgba(0,180,216,0.08); }
+
+/* Single result panel */
+.single-result { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 12px; display: none; max-width: 900px; }
+.single-result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.single-result-score { text-align: right; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="flame">🔥</div>
+    <div>
+      <div class="logo-text">Roaster<span>Bot</span></div>
+      <div class="tagline">Find businesses with revenue leaking through their website</div>
+    </div>
+  </div>
+  <div class="status-wrap">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">idle</span>
+  </div>
+</header>
+
+<div class="search-wrap">
+  <div class="search-bar">
+    <div class="field">
+      <label>Industry</label>
+      <input type="text" id="industry" placeholder="dental, roofing, med spa, HVAC...">
+    </div>
+    <div class="field">
+      <label>Location</label>
+      <input type="text" id="location" placeholder="Austin Texas, Miami FL...">
+    </div>
+    <div class="field">
+      <label>Results</label>
+      <select id="limit">
+        <option value="10">10</option>
+        <option value="20" selected>20</option>
+        <option value="30">30</option>
+        <option value="50">50 max</option>
+      </select>
+    </div>
+    <div class="field" style="align-self:end;">
+      <button class="btn-roast" id="roastBtn" onclick="startRoast()">🔥 Roast 'Em</button>
+    </div>
+  </div>
+
+  <div class="single-wrap">
+    <input type="text" id="singleUrl" placeholder="Single URL audit — paste any website URL here">
+    <button class="btn-single" onclick="singleAudit()">Audit URL →</button>
+  </div>
+  <div class="single-result" id="singleResult"></div>
+</div>
+
+<div class="log-bar" id="logBar"></div>
+
+<div class="summary" id="summary">
+  <div class="stat"><div class="stat-n" id="sTotal">0</div><div class="stat-l">Businesses Found</div></div>
+  <div class="stat"><div class="stat-n" id="sHigh" style="color:#ef4444;">0</div><div class="stat-l">Score ≤ 45 (Poor)</div></div>
+  <div class="stat"><div class="stat-n" id="sAvg">0</div><div class="stat-l">Avg Website Score</div></div>
+  <div class="stat"><div class="stat-n" id="sCritical" style="color:#f97316;">0</div><div class="stat-l">Sites w/ Critical Issues</div></div>
+  <div class="stat"><div class="stat-n" id="sNoSsl" style="color:var(--amber);">0</div><div class="stat-l">No SSL</div></div>
+</div>
+
+<div class="content">
+  <div class="export-row">
+    <button class="btn-export" id="exportBtn" onclick="exportCsv()">⬇ Export CSV</button>
+  </div>
+  <div class="results" id="results">
+    <div class="empty">
+      <div class="empty-icon">🔥</div>
+      <h2>Ready to roast</h2>
+      <p>Enter an industry and location to find businesses with leaky websites.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let sse = null;
+
+// ── Score ring SVG ────────────────────────────────────────────────────────────
+function scoreRing(score, max, color) {
+  const pct = score / max;
+  const r = 20, c = 24, circ = 2 * Math.PI * r;
+  const dash = pct * circ;
+  const trackColor = '#1e293b';
+  return `
+    <div class="dim-ring">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="5"/>
+        <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${color}" stroke-width="5"
+          stroke-dasharray="${dash} ${circ}" stroke-linecap="round"/>
+      </svg>
+      <div class="dim-val" style="color:${color};">${score}</div>
+    </div>`;
+}
+
+function dimColor(score, max) {
+  const p = score / max;
+  if (p >= 0.75) return '#10b981';
+  if (p >= 0.5)  return '#f59e0b';
+  if (p >= 0.25) return '#f97316';
+  return '#ef4444';
+}
+
+function oppColor(score) {
+  // website score — low is bad (red), high is good (green)
+  if (score <= 30) return '#dc2626';
+  if (score <= 45) return '#ef4444';
+  if (score <= 60) return '#f97316';
+  if (score <= 75) return '#f59e0b';
+  if (score <= 88) return '#84cc16';
+  return '#10b981';
+}
+
+function gradeStyle(grade) {
+  if (grade.includes('F'))  return 'background:rgba(220,38,38,0.15);color:#fca5a5;border:1px solid rgba(220,38,38,0.3)';
+  if (grade.includes('D'))  return 'background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)';
+  if (grade.includes('C'))  return 'background:rgba(249,115,22,0.15);color:#fdba74;border:1px solid rgba(249,115,22,0.3)';
+  if (grade.includes('B'))  return 'background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.3)';
+  if (grade.includes('A+')) return 'background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3)';
+  return 'background:rgba(132,204,22,0.15);color:#bef264;border:1px solid rgba(132,204,22,0.3)';
+}
+
+function renderDims(dims) {
+  if (!dims || !Object.keys(dims).length) return '';
+  return Object.entries(dims).map(([key, d]) => {
+    const color = dimColor(d.score, d.max);
+    const flagClass = d.flag === 'Critical' ? 'flag-critical' : d.flag === 'Needs Work' ? 'flag-work' : 'flag-ok';
+    const flagText = d.flag || 'Good';
+    return `<div class="dim-item">
+      ${scoreRing(d.score, d.max, color)}
+      <div class="dim-name">${d.icon} ${d.label}</div>
+      <span class="dim-flag ${flagClass}">${flagText}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCard(r, rank) {
+  const oppC = oppColor(r.opportunity_score || 0);
+  const stars = r.rating ? `${'★'.repeat(Math.round(r.rating))} ${r.rating}` : '';
+  const reviews = r.reviews ? `(${Number(r.reviews).toLocaleString()} reviews)` : '';
+  const website = r.website ? `<a href="${r.website}" target="_blank">${r.website.replace(/^https?:\/\//, '').split('/')[0]}</a>` : '<span style="color:#ef4444;">No website</span>';
+
+  const staleness = (r.staleness_flags || []).map(f => `<span style="font-size:10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;padding:2px 7px;border-radius:4px;">${f}</span>`).join('');
+
+  return `
+    <div class="biz-card">
+      <div class="biz-header" onclick="this.parentElement.querySelector('.dims-row').style.display=this.parentElement.querySelector('.dims-row').style.display==='none'?'grid':'none'">
+        <div class="biz-rank">#${rank}</div>
+        <div class="biz-info">
+          <div class="biz-name">${r.name || 'Unknown'}</div>
+          <div class="biz-meta">
+            <span style="color:var(--amber);">${stars}</span> ${reviews}
+            &nbsp;·&nbsp; ${r.address || ''}
+            &nbsp;·&nbsp; ${r.phone || ''}
+          </div>
+          <div class="biz-meta" style="margin-top:2px;">${website} &nbsp;·&nbsp; Load: ${r.load_time || '?'}s &nbsp;·&nbsp; SSL: ${r.is_ssl ? '✓' : '✗'}</div>
+          ${staleness ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${staleness}</div>` : ''}
+        </div>
+        <div class="biz-right">
+          <div class="opp-score" style="color:${oppC};">${r.website_score ?? r.opportunity_score ?? 0}</div>
+          <div class="opp-label">Website Score / 100</div>
+          <span class="grade-badge" style="${gradeStyle(r.grade || '')}">${r.grade || ''}</span>
+          <a href="/report/${rank - 1}" target="_blank" onclick="event.stopPropagation();"
+            style="display:inline-block;margin-top:8px;background:none;border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 12px;font-size:11px;font-weight:600;text-decoration:none;">
+            📄 View Report
+          </a>
+        </div>
+      </div>
+      <div class="dims-row" style="display:none;">${renderDims(r.dimensions)}</div>
+    </div>`;
+}
+
+// ── SSE ───────────────────────────────────────────────────────────────────────
+function connectSSE() {
+  if (sse) sse.close();
+  sse = new EventSource('/api/stream');
+
+  sse.addEventListener('log', e => {
+    const d = JSON.parse(e.data);
+    const bar = document.getElementById('logBar');
+    bar.style.display = 'block';
+    bar.textContent = d.msg;
+  });
+
+  sse.addEventListener('done', e => {
+    const d = JSON.parse(e.data);
+    setRunning(false);
+
+    document.getElementById('logBar').style.display = 'none';
+
+    const res = d.results || [];
+    if (!res.length) {
+      document.getElementById('results').innerHTML = '<div class="empty"><div class="empty-icon">🤷</div><h2>No results</h2><p>Try a different industry or location.</p></div>';
+      return;
+    }
+
+    // Summary
+    const high = res.filter(r => (r.website_score ?? 0) <= 45).length;
+    const avg = Math.round(res.reduce((a,r) => a + (r.website_score ?? 0), 0) / res.length);
+    const critical = res.filter(r => r.critical_count > 0).length;
+    const nossl = res.filter(r => !r.is_ssl).length;
+
+    document.getElementById('sTotal').textContent = res.length;
+    document.getElementById('sHigh').textContent = high;
+    document.getElementById('sAvg').textContent = avg;
+    document.getElementById('sCritical').textContent = critical;
+    document.getElementById('sNoSsl').textContent = nossl;
+    document.getElementById('summary').style.display = 'grid';
+    document.getElementById('exportBtn').style.display = 'inline-block';
+
+    document.getElementById('results').innerHTML = res.map((r, i) => renderCard(r, i+1)).join('');
+    sse.close();
+  });
+
+  sse.addEventListener('ping', () => {});
+  sse.onerror = () => setTimeout(connectSSE, 3000);
+}
+
+connectSSE();
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+async function startRoast() {
+  const industry = document.getElementById('industry').value.trim();
+  const location = document.getElementById('location').value.trim();
+  const limit = parseInt(document.getElementById('limit').value);
+  if (!industry || !location) { alert('Enter industry and location.'); return; }
+
+  document.getElementById('results').innerHTML = '<div class="empty"><div class="empty-icon">🔥</div><h2>Roasting...</h2><p>Finding businesses and scoring websites.</p></div>';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('exportBtn').style.display = 'none';
+  document.getElementById('logBar').style.display = 'block';
+  document.getElementById('logBar').textContent = 'Starting...';
+  setRunning(true);
+
+  const resp = await fetch('/api/roast', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({industry, location, limit})
+  });
+  if (!resp.ok) {
+    const err = await resp.json();
+    alert(err.detail || 'Failed');
+    setRunning(false);
+  }
+}
+
+async function singleAudit() {
+  const url = document.getElementById('singleUrl').value.trim();
+  if (!url) { alert('Enter a URL.'); return; }
+
+  const panel = document.getElementById('singleResult');
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px 0;">Auditing...</div>';
+
+  const resp = await fetch('/api/roast/single', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({url})
+  });
+  const r = await resp.json();
+  const oppC = oppColor(r.opportunity_score || 0);
+
+  panel.innerHTML = `
+    <div class="single-result-header">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);">${url}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+          Load: ${r.load_time}s &nbsp;·&nbsp; SSL: ${r.is_ssl ? '✓' : '✗'} &nbsp;·&nbsp;
+          <span class="grade-badge" style="${gradeStyle(r.grade||'')};padding:2px 8px;border-radius:4px;">${r.grade||''}</span>
+        </div>
+      </div>
+      <div class="single-result-score">
+        <div style="font-size:42px;font-weight:900;color:${oppC};line-height:1;">${r.opportunity_score||0}</div>
+        <div style="font-size:10px;color:var(--muted);">Opportunity / 100</div>
+      </div>
+    </div>
+    <div class="dims-row" style="border-top:1px solid var(--border);padding-top:14px;">${renderDims(r.dimensions)}</div>
+  `;
+}
+
+function exportCsv() { window.location.href = '/api/export.csv'; }
+
+function setRunning(running) {
+  document.getElementById('statusDot').className = 'dot' + (running ? ' live' : '');
+  document.getElementById('statusText').textContent = running ? 'roasting...' : 'idle';
+  document.getElementById('roastBtn').disabled = running;
+}
+
+// Enter key support
+document.getElementById('industry').addEventListener('keydown', e => { if (e.key === 'Enter') startRoast(); });
+document.getElementById('location').addEventListener('keydown', e => { if (e.key === 'Enter') startRoast(); });
+document.getElementById('singleUrl').addEventListener('keydown', e => { if (e.key === 'Enter') singleAudit(); });
+</script>
+</body>
+</html>
