@@ -13,7 +13,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from config import SERPAPI_KEY
 from scraper.engine import run_roaster, audit_url
-from server.db import init_db, save_results, get_result, get_latest_session, get_session_results
+from server.db import init_db, save_results, get_result, get_latest_session, get_session_results, save_result_by_name, get_result_by_slug, make_slug, cleanup_old_results
 
 import json as _json2
 
@@ -85,14 +85,20 @@ async def start_roast(params: RoastParams):
                 SERPAPI_KEY, log_cb
             )
             _results = results
-            # Save to SQLite
+            # Save to SQLite by session and by company name
             save_results(_current_session, results)
+            for r in results:
+                save_result_by_name(r)
+            cleanup_old_results(7)
             status = "completed"
         except Exception as e:
             results = []
             status = "error"
             await _broadcast({"type": "log", "msg": f"ERROR: {e}"})
 
+        # Add slug to each result for named URLs
+        for r in results:
+            r["slug"] = make_slug(r.get("name", "business"))
         await _broadcast({
             "type": "done",
             "status": status,
@@ -212,6 +218,13 @@ async def report_by_session(session_id: str, idx: int):
         raise HTTPException(404, "Result not found")
     return _render_report(biz)
 
+
+@app.get("/report/company/{slug}", response_class=HTMLResponse)
+async def report_by_name(slug: str):
+    biz = get_result_by_slug(slug)
+    if not biz:
+        raise HTTPException(404, f"Report for '{slug}' not found or expired.")
+    return _render_report(biz)
 
 @app.get("/report/{idx}", response_class=HTMLResponse)
 async def report(idx: int):

@@ -61,3 +61,35 @@ def get_session_results(session_id: str) -> list:
             (session_id,)
         ).fetchall()
         return [json.loads(r["data"]) for r in rows]
+
+def make_slug(name: str) -> str:
+    import re
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower().strip())
+    return slug.strip('-')[:50]
+
+def save_result_by_name(biz: dict) -> str:
+    slug = make_slug(biz.get("name", "business"))
+    with get_conn() as conn:
+        conn.execute("DELETE FROM results WHERE session_id = ?", (slug,))
+        conn.execute(
+            "INSERT INTO results (session_id, idx, data) VALUES (?, ?, ?)",
+            (slug, 0, json.dumps(biz))
+        )
+        conn.commit()
+    return slug
+
+def get_result_by_slug(slug: str) -> dict | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT data FROM results WHERE session_id = ? AND idx = 0",
+            (slug,)
+        ).fetchone()
+        return json.loads(row["data"]) if row else None
+
+def cleanup_old_results(days: int = 7):
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM results WHERE created_at < datetime('now', ? || ' days')",
+            (f"-{days}",)
+        )
+        conn.commit()
