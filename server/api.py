@@ -2,6 +2,7 @@ import asyncio
 import csv
 import io
 import json
+import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -12,17 +13,24 @@ from sse_starlette.sse import EventSourceResponse
 
 from config import SERPAPI_KEY
 from scraper.engine import run_roaster, audit_url
+from server.db import init_db, save_results, get_result, get_latest_session, get_session_results
+
+import json as _json2
 
 UI_DIR = Path(__file__).resolve().parent.parent / "ui"
 
 app = FastAPI(title="Roaster Bot")
 
-# ── State ─────────────────────────────────────────────────────────────────────
+# Init DB on startup
+init_db()
+
+# ── In-memory state for streaming ─────────────────────────────────────────────
 _running = False
 _task = None
 _results: list[dict] = []
 _buffer: list[dict] = []
 _subscribers: list[asyncio.Queue] = []
+_current_session: str = ""
 
 
 async def _broadcast(ev: dict):
@@ -53,16 +61,17 @@ async def index():
 
 @app.post("/api/roast")
 async def start_roast(params: RoastParams):
-    global _running, _task, _results, _buffer
+    global _running, _task, _results, _buffer, _current_session
 
     if _running:
         raise HTTPException(409, "Already running")
     if not SERPAPI_KEY:
-        raise HTTPException(400, "SERPAPI_KEY not configured in .env")
+        raise HTTPException(400, "SERPAPI_KEY not configured")
 
     _running = True
     _results = []
     _buffer = []
+    _current_session = str(uuid.uuid4())
 
     async def _job():
         global _running, _results
@@ -76,6 +85,8 @@ async def start_roast(params: RoastParams):
                 SERPAPI_KEY, log_cb
             )
             _results = results
+            # Save to SQLite
+            save_results(_current_session, results)
             status = "completed"
         except Exception as e:
             results = []
@@ -87,11 +98,12 @@ async def start_roast(params: RoastParams):
             "status": status,
             "count": len(results),
             "results": results,
+            "session_id": _current_session,
         })
         _running = False
 
     _task = asyncio.create_task(_job())
-    return {"ok": True}
+    return {"ok": True, "session_id": _current_session}
 
 
 @app.post("/api/roast/single")
@@ -135,7 +147,13 @@ async def get_results():
 
 @app.get("/api/export.csv")
 async def export_csv():
-    if not _results:
+    results = _results
+    if not results:
+        # Try latest session from DB
+        session = get_latest_session()
+        if session:
+            results = get_session_results(session)
+    if not results:
         raise HTTPException(404, "No results")
 
     buf = io.StringIO()
@@ -150,7 +168,7 @@ async def export_csv():
     writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
 
-    for r in _results:
+    for r in results:
         dims = r.get("dimensions", {})
         writer.writerow({
             "priority_score": r.get("priority_score", 0),
@@ -187,27 +205,39 @@ async def export_csv():
     )
 
 
-if UI_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")
+@app.get("/report/{session_id}/{idx}", response_class=HTMLResponse)
+async def report_by_session(session_id: str, idx: int):
+    biz = get_result(session_id, idx)
+    if not biz:
+        raise HTTPException(404, "Result not found")
+    return _render_report(biz)
 
 
-# ── Report route ──────────────────────────────────────────────────────────────
-
-import json as _json2
-from fastapi.responses import HTMLResponse as _HTMLResponse
-
-@app.get("/report/{idx}", response_class=_HTMLResponse)
+@app.get("/report/{idx}", response_class=HTMLResponse)
 async def report(idx: int):
-    if idx < 0 or idx >= len(_results):
-        raise HTTPException(404, "Result not found — run a search first")
+    # Try in-memory first
+    if idx < len(_results):
+        biz = _results[idx]
+    else:
+        # Fall back to latest session in DB
+        session = get_latest_session()
+        if not session:
+            raise HTTPException(404, "No results found. Run a search first.")
+        biz = get_result(session, idx)
+        if not biz:
+            raise HTTPException(404, f"Result {idx} not found. Run a search first.")
+    return _render_report(biz)
 
-    biz = _results[idx]
+
+def _render_report(biz: dict) -> HTMLResponse:
     report_html = (UI_DIR / "report.html").read_text(encoding="utf-8")
-
-    # Inject data
     data_js = f"window.REPORT_DATA = {_json2.dumps(biz)};"
     report_html = report_html.replace(
         "const reportData=window.REPORT_DATA||",
         f"{data_js}\nconst reportData=window.REPORT_DATA||"
     )
-    return _HTMLResponse(report_html)
+    return HTMLResponse(report_html)
+
+
+if UI_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")
