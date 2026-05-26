@@ -523,10 +523,10 @@ function populate(data){
 
   const d=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
   document.getElementById('reportDate').textContent=d;
-  const fd=document.getElementById('footerDate'); if(fd) fd.textContent=d;;
-  document.getElementById('bizName').textContent=data.name||'Your Business';
-  document.getElementById('bizUrl').textContent=(data.website||'').replace(/^https?:\/\//,'').split('?')[0].split('/')[0];
-  document.getElementById('bizAddr').textContent=data.address||'';
+  const fd=document.getElementById('footerDate'); if(fd) fd.textContent=d;
+  const bn=document.getElementById('bizName'); if(bn) bn.textContent=data.name||'Your Business';
+  const bu=document.getElementById('bizUrl'); if(bu) bu.textContent=(data.website||'').replace(/^https?:\/\//,'').split('?')[0].split('/')[0];
+  const ba=document.getElementById('bizAddr'); if(ba) ba.textContent=data.address||'';
 
   document.getElementById('scoreGrade').textContent=gradeLabel(score);
   document.getElementById('scoreGrade').style=gradeBg(score);
