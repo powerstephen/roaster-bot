@@ -219,7 +219,7 @@ async def report_by_session(session_id: str, idx: int):
     return _render_report(biz)
 
 
-@app.get("/report/company/{slug}", response_class=HTMLResponse)
+@app.get("/r/{slug}", response_class=HTMLResponse)
 async def report_by_name(slug: str):
     biz = get_result_by_slug(slug)
     if not biz:
