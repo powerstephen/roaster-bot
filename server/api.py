@@ -231,14 +231,12 @@ async def report(idx: int):
 
 def _render_report(biz: dict) -> HTMLResponse:
     report_html = (UI_DIR / "report.html").read_text(encoding="utf-8")
-    data_js = f"const reportData={_json2.dumps(biz)};"
-    # Replace the entire reportData declaration including default fallback
-    import re as _re
-    report_html = _re.sub(
-        r'const reportData=window\.REPORT_DATA\|\|\{.*?\};',
-        data_js,
-        report_html,
-        flags=_re.DOTALL
+    # Inject data at the top of the script block
+    data_js = f"window.REPORT_DATA = {_json2.dumps(biz)};"
+    report_html = report_html.replace(
+        "<script>",
+        f"<script>\n{data_js}",
+        1
     )
     return HTMLResponse(report_html)
 

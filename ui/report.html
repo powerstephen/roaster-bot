@@ -578,7 +578,7 @@ function populate(data){
   });
 }
 
-const reportData=window.REPORT_DATA||{
+const reportData=(typeof window.REPORT_DATA !== "undefined" ? window.REPORT_DATA : {
   name:"Top Hat Roofing",website:"https://tophatroofing.homes",
   address:"19 SW 6th St, Miami, FL 33130",website_score:32,
   critical_count:5,needs_work_count:2,
@@ -594,7 +594,7 @@ const reportData=window.REPORT_DATA||{
     visual:{score:1,max:10,label:"Visual Layout",icon:"🎨",status:"Wall of text detected",flag:"Critical"},
     tech:{score:0,max:10,label:"Tech & Conversion",icon:"📊",status:"No analytics or tracking",flag:"Critical"},
   }
-};
+});
 populate(reportData);
 </script>
 </div>
