@@ -256,6 +256,37 @@ function renderDims(dims) {
 
 let currentView = 'combined';
 
+function pillColor(color) {
+  const map = {
+    blue: 'background:rgba(59,130,246,0.1);color:#60a5fa',
+    green: 'background:rgba(16,185,129,0.1);color:#34d399',
+    red: 'background:rgba(239,68,68,0.1);color:#f87171',
+    amber: 'background:rgba(245,158,11,0.1);color:#fbbf24',
+    orange: 'background:rgba(249,115,22,0.1);color:#fb923c',
+    purple: 'background:rgba(139,92,246,0.1);color:#a78bfa',
+  };
+  return map[color] || map.blue;
+}
+
+function renderIntelPills(r) {
+  let out = '';
+  if (r.revenue_leak) {
+    out += '<div style="font-size:9px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:3px 8px;border-radius:4px;margin-top:5px;border:1px solid rgba(239,68,68,0.2);">💸 REVENUE LEAK — ' + (r.revenue_leak_reason||'') + '</div>';
+  }
+  if (r.intel_pills && r.intel_pills.length) {
+    const filtered = r.intel_pills.filter(function(p){ return !p.label.includes('Revenue Leak'); });
+    if (filtered.length) {
+      out += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;">';
+      filtered.forEach(function(p) {
+        const style = pillColor(p.color);
+        out += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;' + style + ';font-weight:600;">' + p.icon + ' ' + p.label + '</span>';
+      });
+      out += '</div>';
+    }
+  }
+  return out;
+}
+
 function renderScoreBlock(r) {
   const view = currentView;
   const score = view==='icp' ? (r.icp_score||0) : view==='website' ? (r.website_score||0) : (r.combined_score||0);
@@ -322,12 +353,7 @@ function renderCard(r, rank) {
           ${staleness ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${staleness}</div>` : ''}
           ${r.size_signals && r.size_signals.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">${r.size_signals.map(s => `<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600;">${s}</span>`).join('')}</div>` : ''}
           ${r.size_tier === 'enterprise' ? '<div style="font-size:9px;color:#f87171;margin-top:3px;font-weight:600;">⚠ Enterprise — likely has in-house team</div>' : r.size_tier === 'mid' ? '<div style="font-size:9px;color:#f59e0b;margin-top:3px;font-weight:600;">◆ Mid-market — verify before enrichment</div>' : ''}
-          ${r.revenue_leak ? `<div style="font-size:9px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:3px 8px;border-radius:4px;margin-top:5px;border:1px solid rgba(239,68,68,0.2);">💸 REVENUE LEAK — ${r.revenue_leak_reason}</div>` : ''}
-          ${r.intel_pills && r.intel_pills.length ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;">${r.intel_pills.filter(p=>!p.label.includes('Revenue Leak')).map(p => {
-            const colors = {blue:'rgba(59,130,246,0.1);color:#60a5fa', green:'rgba(16,185,129,0.1);color:#34d399', red:'rgba(239,68,68,0.1);color:#f87171', amber:'rgba(245,158,11,0.1);color:#fbbf24', orange:'rgba(249,115,22,0.1);color:#fb923c', purple:'rgba(139,92,246,0.1);color:#a78bfa'};
-            const c = colors[p.color] || colors.blue;
-            return \`<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:\${c.split(';')[0].replace('background:','')};color:\${c.split('color:')[1]};font-weight:600;">\${p.icon} \${p.label}</span>\`;
-          }).join('')}</div>` : ''}
+          ${renderIntelPills(r)}
         </div>
         <div class="biz-right">
           <div class="opp-score" style="color:${oppC};">${r.website_score ?? r.opportunity_score ?? 0}</div>
