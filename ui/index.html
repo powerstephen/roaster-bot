@@ -256,6 +256,19 @@ function renderDims(dims) {
 
 let currentView = 'combined';
 
+function toggleDetail(e, id) {
+  e.stopPropagation();
+  const el = document.getElementById(id);
+  const btn = e.target;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.textContent = '▲ Details';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = '▼ Details';
+  }
+}
+
 function pillColor(color) {
   const map = {
     blue: 'background:rgba(59,130,246,0.1);color:#60a5fa',
@@ -356,24 +369,44 @@ function renderCard(r, rank) {
           ${renderIntelPills(r)}
         </div>
         <div class="biz-right">
-          <div class="opp-score" style="color:${oppC};">${r.website_score ?? r.opportunity_score ?? 0}</div>
-          <div class="opp-label">Website Score / 100</div>
-          <span class="grade-badge" style="${gradeStyle(r.grade || '')}">${r.grade || ''}</span>
-          <div style="margin-top:6px;" id="score-block-${rank}">${renderScoreBlock(r)}</div>
-          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          <div class="opp-score" style="color:${oppC};">${r.combined_score || r.website_score || 0}</div>
+          <div class="opp-label">Opportunity</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">
+            Web <strong style="color:var(--text)">${r.website_score||0}</strong>
+            &nbsp;·&nbsp;
+            ICP <strong style="color:var(--teal)">${r.icp_score||0}</strong>
+          </div>
+          <button onclick="toggleDetail(event, 'detail-${rank}')"
+            style="margin-top:8px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 10px;font-size:11px;cursor:pointer;width:100%;">
+            ▼ Details
+          </button>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
             <a href="/r/${r.slug || rank - 1}" target="_blank" onclick="event.stopPropagation();"
               style="background:none;border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;text-decoration:none;">
               📄 Report
             </a>
-            ${r.icp_tier === 'A' || r.icp_tier === 'B' ? `
-            <button onclick="sendToHarvest(event, '${(r.website||'').replace(/'/g,'')}', '${(r.name||'').replace(/'/g,'')}')"
-              style="background:rgba(0,196,212,0.1);border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">
-              🌾 Enrich
-            </button>` : ''}
+            ${r.icp_tier === 'A' || r.icp_tier === 'B' ? '<button onclick="sendToHarvest(event, '' + (r.website||'').replace(/'/g,'') + '', '' + (r.name||'').replace(/'/g,'') + '')" style="background:rgba(0,196,212,0.1);border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">🌾 Enrich</button>' : ''}
           </div>
         </div>
       </div>
-      <div class="dims-row" style="display:none;">${renderDims(r.dimensions)}</div>
+      <div id="detail-${rank}" style="display:none;border-top:1px solid var(--border);padding:14px 16px;">
+        <!-- Website score rings -->
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Website Score — ${r.website_score||0}/100</div>
+        <div class="dims-row" style="display:grid !important;">
+          ${renderDims(r.dimensions)}
+        </div>
+        <!-- ICP Intelligence -->
+        <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">ICP Intelligence — ${r.icp_score||0}/100</div>
+          ${r.revenue_leak ? '<div style="font-size:10px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:4px 10px;border-radius:5px;margin-bottom:8px;border:1px solid rgba(239,68,68,0.2);">💸 REVENUE LEAK — ' + (r.revenue_leak_reason||'') + '</div>' : ''}
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            ${renderIntelPills(r)}
+            ${(r.icp_pills||[]).map(function(p){ return '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(0,196,212,0.08);color:#00c4d4;font-weight:600;">' + p + '</span>'; }).join('')}
+            ${(r.size_signals||[]).map(function(s){ return '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600;">' + s + '</span>'; }).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="dims-row" style="display:none;" style="display:none;">${renderDims(r.dimensions)}</div>
     </div>`;
 }
 
