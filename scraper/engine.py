@@ -555,11 +555,30 @@ def calculate_icp_score(audit: dict, biz: dict) -> dict:
         icp_tier = "D"
         icp_label = "✗ Poor fit"
 
+    # Build explanation pills
+    pills = []
+    if website_pts >= 20: pills.append("Sweet spot website")
+    elif website_pts == 0: pills.append("Website out of range")
+    if size_pts >= 20: pills.append("SMB size ✓")
+    elif size_pts == 0: pills.append("Too large")
+    if marketing_pts >= 15: pills.append("No in-house marketing")
+    elif marketing_pts == 5: pills.append("Has marketing team")
+    if tech_pts >= 15: pills.append("Basic tech stack")
+    elif tech_pts == 5: pills.append("Enterprise tech")
+    if quality_pts >= 15: pills.append("Established business")
+    elif quality_pts <= 3: pills.append("Low reviews")
+
+    # Combined opportunity score (website 40% + ICP 60%)
+    ws = audit.get("website_score", 0)
+    combined = round(ws * 0.4 + score * 0.6)
+
     return {
         "icp_score": score,
         "icp_tier": icp_tier,
         "icp_label": icp_label,
         "icp_breakdown": breakdown,
+        "icp_pills": pills,
+        "combined_score": combined,
     }
 
 async def run_roaster(industry: str, location: str, limit: int, api_key: str, log_cb=None) -> list[dict]:
@@ -654,6 +673,6 @@ async def run_roaster(industry: str, location: str, limit: int, api_key: str, lo
         })
         await asyncio.sleep(0.3)
 
-    results.sort(key=lambda x: (x["icp_score"], x["priority_score"]), reverse=True)
+    results.sort(key=lambda x: x.get("combined_score", 0), reverse=True)
     await log(f"Done — {len(results)} businesses scored across 58 signals")
     return results

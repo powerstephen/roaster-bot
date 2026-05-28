@@ -254,6 +254,29 @@ function renderDims(dims) {
   }).join('');
 }
 
+let currentView = 'combined';
+
+function setView(v) {
+  currentView = v;
+  ['website','icp','combined'].forEach(x => {
+    const btn = document.getElementById('btn-'+x);
+    if(x === v) {
+      btn.style.background = 'var(--teal)';
+      btn.style.color = '#080d1a';
+      btn.style.borderColor = 'var(--teal)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--muted)';
+      btn.style.borderColor = 'var(--border)';
+    }
+  });
+  // Re-render with new view
+  const results = window._lastResults;
+  if(results) {
+    document.getElementById('results').innerHTML = results.map((r,i) => renderCard(r, i+1)).join('');
+  }
+}
+
 function renderCard(r, rank) {
   const oppC = oppColor(r.opportunity_score || 0);
   const stars = r.rating ? `${'★'.repeat(Math.round(r.rating))} ${r.rating}` : '';
@@ -283,12 +306,22 @@ function renderCard(r, rank) {
           <div class="opp-label">Website Score / 100</div>
           <span class="grade-badge" style="${gradeStyle(r.grade || '')}">${r.grade || ''}</span>
           <div style="margin-top:6px;">
-            ${r.icp_label ? `<div style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:4px;
-              ${r.icp_tier==='A' ? 'background:rgba(16,185,129,0.15);color:#10b981;' : 
-                r.icp_tier==='B' ? 'background:rgba(0,196,212,0.12);color:#00c4d4;' :
-                r.icp_tier==='C' ? 'background:rgba(245,158,11,0.12);color:#f59e0b;' :
-                'background:rgba(100,116,139,0.1);color:#64748b;'}">${r.icp_label}</div>` : ''}
-            <div style="font-size:10px;color:var(--muted);">ICP: ${r.icp_score||0}/100 · Web: ${r.website_score||0}/100</div>
+            ${(() => {
+              const view = currentView;
+              const score = view==='icp' ? (r.icp_score||0) : view==='website' ? (r.website_score||0) : (r.combined_score||0);
+              const label = view==='icp' ? r.icp_label : view==='website' ? r.grade : (r.icp_tier==='A'||r.icp_tier==='B' ? r.icp_label : '');
+              const scoreColor = score>=80 ? '#10b981' : score>=60 ? '#00c4d4' : score>=40 ? '#f59e0b' : '#ef4444';
+              return \`
+                <div style="font-size:28px;font-weight:900;color:\${scoreColor};line-height:1;">\${score}</div>
+                <div style="font-size:9px;color:var(--muted);margin-bottom:4px;">\${view==='icp'?'ICP Score':view==='website'?'Website Score':'Opportunity'} / 100</div>
+                \${label ? \`<div style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:6px;
+                  \${r.icp_tier==='A'?'background:rgba(16,185,129,0.15);color:#10b981;':
+                    r.icp_tier==='B'?'background:rgba(0,196,212,0.12);color:#00c4d4;':
+                    r.icp_tier==='C'?'background:rgba(245,158,11,0.12);color:#f59e0b;':
+                    'background:rgba(100,116,139,0.1);color:#64748b;'}">\${label}</div>\` : ''}
+                \${view==='icp' || view==='combined' ? \`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">\${(r.icp_pills||[]).map(p=>\`<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(0,196,212,0.08);color:#00c4d4;font-weight:600;">\${p}</span>\`).join('')}</div>\` : ''}
+              \`;
+            })()}
           </div>
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
             <a href="/r/${r.slug || rank - 1}" target="_blank" onclick="event.stopPropagation();"
@@ -345,7 +378,9 @@ function connectSSE() {
     document.getElementById('summary').style.display = 'grid';
     document.getElementById('exportBtn').style.display = 'inline-block';
 
+    window._lastResults = res;
     document.getElementById('results').innerHTML = res.map((r, i) => renderCard(r, i+1)).join('');
+    document.getElementById('toggleWrap').style.display = 'block';
     sse.close();
   });
 
