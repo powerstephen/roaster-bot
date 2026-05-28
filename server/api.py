@@ -219,6 +219,37 @@ async def report_by_session(session_id: str, idx: int):
     return _render_report(biz)
 
 
+
+
+@app.post("/api/roast/single/save")
+async def save_single_roast(request: Request):
+    """Save a single URL audit result so it can be viewed as a full report."""
+    data = await request.json()
+    url = data.get("url", "")
+    name = data.get("name", url)
+    
+    import re as _re
+    slug = _re.sub(r'[^a-z0-9]+', '-', name.lower().strip())
+    slug = slug.strip('-')[:50]
+    
+    # Build a proper result object
+    biz = {
+        "name": name,
+        "website": url,
+        "address": "",
+        "phone": "",
+        "website_score": data.get("website_score", data.get("health_score", 0)),
+        "grade": data.get("grade", ""),
+        "critical_count": data.get("critical_count", 0),
+        "needs_work_count": data.get("needs_work_count", 0),
+        "load_time": data.get("load_time", ""),
+        "is_ssl": data.get("is_ssl", False),
+        "dimensions": data.get("dimensions", {}),
+    }
+    
+    save_result_by_name(biz)
+    return {"slug": slug, "report_url": f"/r/{slug}"}
+
 @app.get("/r/{slug}", response_class=HTMLResponse)
 async def report_by_name(slug: str):
     biz = get_result_by_slug(slug)

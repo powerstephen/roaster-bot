@@ -372,32 +372,54 @@ async function singleAudit() {
 
   const panel = document.getElementById('singleResult');
   panel.style.display = 'block';
-  panel.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px 0;">Auditing...</div>';
+  panel.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px 0;">Auditing <strong>' + url + '</strong>...</div>';
 
-  const resp = await fetch('/api/roast/single', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({url})
-  });
-  const r = await resp.json();
-  const oppC = oppColor(r.opportunity_score || 0);
+  try {
+    const resp = await fetch('/api/roast/single', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url})
+    });
+    const r = await resp.json();
 
-  panel.innerHTML = `
-    <div class="single-result-header">
-      <div>
-        <div style="font-size:14px;font-weight:700;color:var(--text);">${url}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">
-          Load: ${r.load_time}s &nbsp;·&nbsp; SSL: ${r.is_ssl ? '✓' : '✗'} &nbsp;·&nbsp;
-          <span class="grade-badge" style="${gradeStyle(r.grade||'')};padding:2px 8px;border-radius:4px;">${r.grade||''}</span>
+    // Save to results array and open full report
+    const slug = url.replace(/^https?:\/\//,'').replace(/[^a-z0-9]+/gi,'-').toLowerCase().slice(0,50);
+    
+    // Save via the single report endpoint
+    const saveResp = await fetch('/api/roast/single/save', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({...r, url, name: url.replace(/^https?:\/\//,'').split('/')[0]})
+    });
+
+    if (saveResp.ok) {
+      const saved = await saveResp.json();
+      const reportUrl = `/r/${saved.slug}`;
+      panel.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);">${url}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px;">
+              Score: <strong style="color:${oppColor(r.website_score||0)}">${r.website_score||0}/100</strong>
+              &nbsp;·&nbsp; Grade: <span class="grade-badge" style="${gradeStyle(r.grade||'')};padding:2px 8px;border-radius:4px;">${r.grade||''}</span>
+              &nbsp;·&nbsp; ${r.critical_count||0} critical issues
+            </div>
+          </div>
+          <a href="${reportUrl}" target="_blank"
+            style="background:linear-gradient(135deg,var(--teal),#0096a8);color:#080d1a;font-size:12px;font-weight:700;padding:8px 20px;border-radius:8px;text-decoration:none;">
+            📄 View Full Report →
+          </a>
         </div>
-      </div>
-      <div class="single-result-score">
-        <div style="font-size:42px;font-weight:900;color:${oppC};line-height:1;">${r.opportunity_score||0}</div>
-        <div style="font-size:10px;color:var(--muted);">Opportunity / 100</div>
-      </div>
-    </div>
-    <div class="dims-row" style="border-top:1px solid var(--border);padding-top:14px;">${renderDims(r.dimensions)}</div>
-  `;
+        <div class="dims-row" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px;">${renderDims(r.dimensions)}</div>`;
+    } else {
+      // Fallback - show inline if save failed
+      panel.innerHTML = `
+        <div style="font-size:13px;font-weight:700;">${url} — ${r.website_score||0}/100</div>
+        <div class="dims-row" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px;">${renderDims(r.dimensions)}</div>`;
+    }
+  } catch(e) {
+    panel.innerHTML = '<div style="color:var(--red);font-size:12px;">Error auditing URL. Make sure it includes https://</div>';
+  }
 }
 
 function exportCsv() { window.location.href = '/api/export.csv'; }
