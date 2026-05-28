@@ -256,9 +256,9 @@ function renderDims(dims) {
 
 let currentView = 'combined';
 
-function toggleDetail(e, id) {
+function toggleDetail(e, rank) {
   e.stopPropagation();
-  const el = document.getElementById(id);
+  const el = document.getElementById('detail-' + rank);
   const btn = e.target;
   if (el.style.display === 'none') {
     el.style.display = 'block';
@@ -399,7 +399,7 @@ function renderCard(r, rank) {
         '<div class="opp-score" style="color:' + oppC + ';">' + (r.combined_score || r.website_score || 0) + '</div>' +
         '<div class="opp-label">Opportunity</div>' +
         '<div style="font-size:10px;color:var(--muted);margin-top:3px;">Web <strong style="color:var(--text)">' + (r.website_score||0) + '</strong> &nbsp;·&nbsp; ICP <strong style="color:var(--teal)">' + (r.icp_score||0) + '</strong></div>' +
-        '<button onclick="toggleDetail(event, 'detail-' + rank + '')" style="margin-top:8px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 10px;font-size:11px;cursor:pointer;width:100%;">▼ Details</button>' +
+        '<button data-rank="' + rank + '" onclick="toggleDetail(event, this.dataset.rank)" style="margin-top:8px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 10px;font-size:11px;cursor:pointer;width:100%;">▼ Details</button>' +
         '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">' +
           '<a href="/r/' + reportSlug + '" target="_blank" onclick="event.stopPropagation();" style="background:none;border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;text-decoration:none;">📄 Report</a>' +
           enrichBtn +
