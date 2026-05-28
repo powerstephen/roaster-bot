@@ -352,6 +352,95 @@ async def audit_url(url: str) -> dict:
         }
 
 
+
+async def detect_size_signals(website: str, company_name: str) -> dict:
+    """
+    Detect company size signals from website content.
+    Returns size_tier: 'smb' | 'mid' | 'enterprise' | 'unknown'
+    and size_signals list for display.
+    """
+    if not website:
+        return {"size_tier": "unknown", "size_signals": [], "employee_estimate": ""}
+
+    signals = []
+    tier = "unknown"
+    employee_estimate = ""
+
+    try:
+        import httpx, re as _re
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as c:
+            r = await c.get(website, headers=headers)
+            text = r.text.lower()
+
+        # Employee count mentioned explicitly
+        emp_match = _re.search(r'(\d+)\+?\s*(?:employees|staff|team members|people)', text)
+        if emp_match:
+            count = int(emp_match.group(1))
+            employee_estimate = f"{count}+ employees"
+            if count >= 200:
+                tier = "enterprise"
+                signals.append(f"{count}+ employees")
+            elif count >= 50:
+                tier = "mid"
+                signals.append(f"{count}+ employees")
+            elif count >= 10:
+                tier = "smb"
+                signals.append(f"{count}+ employees")
+            else:
+                tier = "micro"
+                signals.append(f"{count} employees")
+
+        # Job postings page = hiring = growing
+        if any(x in text for x in ["/careers", "/jobs", "/join-us", "/join-our-team", "we are hiring", "open positions", "job openings"]):
+            signals.append("Active hiring")
+            if tier == "unknown": tier = "smb"
+
+        # Multiple locations
+        loc_count = len(_re.findall(r'(?:office|location|branch)\s+in\s+[a-z]', text))
+        if loc_count >= 3:
+            signals.append(f"{loc_count}+ locations")
+            if tier in ("unknown", "smb"): tier = "mid"
+        elif loc_count >= 1:
+            signals.append("Multiple locations")
+
+        # Enterprise tech stack
+        enterprise_tech = []
+        if "salesforce" in text: enterprise_tech.append("Salesforce")
+        if "hubspot" in text: enterprise_tech.append("HubSpot")
+        if "marketo" in text: enterprise_tech.append("Marketo")
+        if "workday" in text: enterprise_tech.append("Workday")
+        if enterprise_tech:
+            signals.append(f"Uses {', '.join(enterprise_tech[:2])}")
+            if tier in ("unknown", "smb") and "salesforce" in text: tier = "mid"
+
+        # Marketing team indicator
+        if any(x in text for x in ["marketing manager", "marketing director", "head of marketing", "cmo", "chief marketing"]):
+            signals.append("Has marketing team")
+            if tier in ("unknown"): tier = "smb"
+
+        # Awards/certifications = established
+        if any(x in text for x in ["bbb accredited", "inc 500", "fortune 500", "award winning"]):
+            signals.append("Industry recognition")
+
+        # Solo indicators = micro
+        if any(x in text for x in ["family owned", "family-owned", "owner operated", "owner-operated", "i am", "i have been"]):
+            signals.append("Owner operated")
+            if tier == "unknown": tier = "micro"
+
+    except Exception:
+        pass
+
+    # Default if no signals found
+    if tier == "unknown":
+        tier = "smb"
+
+    return {
+        "size_tier": tier,
+        "size_signals": signals,
+        "employee_estimate": employee_estimate,
+    }
+
 async def run_roaster(industry: str, location: str, limit: int, api_key: str, log_cb=None) -> list[dict]:
     async def log(msg):
         if log_cb:
@@ -375,6 +464,10 @@ async def run_roaster(industry: str, location: str, limit: int, api_key: str, lo
     for i, biz in enumerate(businesses, 1):
         await log(f"  [{i}/{len(businesses)}] {biz['name']}")
         audit = await audit_url(biz.get("website", ""))
+
+        # Size signal detection from website content
+        size_signals = await detect_size_signals(biz.get("website", ""), biz.get("name", ""))
+        audit.update(size_signals)
 
         # Business quality score from reviews/rating
         bq = 0
@@ -402,14 +495,24 @@ async def run_roaster(industry: str, location: str, limit: int, api_key: str, lo
         else:
             website_fit = max(0, 100 - (distance - IDEAL_RANGE) * 8)
 
-        # Size signal from reviews (proxy for company size)
-        # 20-200 reviews = sweet spot (established but not huge)
-        if 20 <= rv <= 200:
-            size_fit = 100
-        elif rv < 20:
-            size_fit = max(40, rv * 3)  # too small/unknown
+        # Size fit from detected tier + reviews proxy
+        size_tier = audit.get("size_tier", "unknown")
+        if size_tier == "smb":
+            size_fit = 100   # perfect - 10-50 employees
+        elif size_tier == "micro":
+            size_fit = 60    # small but possible
+        elif size_tier == "mid":
+            size_fit = 75    # borderline - worth checking
+        elif size_tier == "enterprise":
+            size_fit = 20    # too big - own teams
         else:
-            size_fit = max(50, 100 - (rv - 200) // 10)  # too big
+            # Fall back to review count proxy
+            if 20 <= rv <= 200:
+                size_fit = 90
+            elif rv < 20:
+                size_fit = max(40, rv * 3)
+            else:
+                size_fit = max(50, 100 - (rv - 200) // 10)
 
         # Combined sweet spot priority
         # website_fit: are they in the right zone to need + afford help?

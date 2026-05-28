@@ -274,6 +274,8 @@ function renderCard(r, rank) {
           </div>
           <div class="biz-meta" style="margin-top:2px;">${website} &nbsp;·&nbsp; Load: ${r.load_time || '?'}s &nbsp;·&nbsp; SSL: ${r.is_ssl ? '✓' : '✗'}</div>
           ${staleness ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${staleness}</div>` : ''}
+          ${r.size_signals && r.size_signals.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">${r.size_signals.map(s => `<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600;">${s}</span>`).join('')}</div>` : ''}
+          ${r.size_tier === 'enterprise' ? '<div style="font-size:9px;color:#f87171;margin-top:3px;font-weight:600;">⚠ Enterprise — likely has in-house team</div>' : r.size_tier === 'mid' ? '<div style="font-size:9px;color:#f59e0b;margin-top:3px;font-weight:600;">◆ Mid-market — verify before enrichment</div>' : ''}
         </div>
         <div class="biz-right">
           <div class="opp-score" style="color:${oppC};">${r.website_score ?? r.opportunity_score ?? 0}</div>
