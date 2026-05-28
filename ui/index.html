@@ -344,70 +344,82 @@ function setView(v) {
 }
 
 function renderCard(r, rank) {
-  const oppC = oppColor(r.opportunity_score || 0);
-  const stars = r.rating ? `${'★'.repeat(Math.round(r.rating))} ${r.rating}` : '';
-  const reviews = r.reviews ? `(${Number(r.reviews).toLocaleString()} reviews)` : '';
-  const website = r.website ? `<a href="${r.website}" target="_blank">${r.website.replace(/^https?:\/\//, '').split('/')[0]}</a>` : '<span style="color:#ef4444;">No website</span>';
+  const oppC = oppColor(r.combined_score || r.website_score || 0);
+  const stars = r.rating ? ('★'.repeat(Math.round(r.rating)) + ' ' + r.rating) : '';
+  const reviews = r.reviews ? '(' + Number(r.reviews).toLocaleString() + ' reviews)' : '';
+  const webHost = r.website ? r.website.replace(/^https?:\/\//, '').split('/')[0] : '';
+  const websiteHtml = r.website
+    ? '<a href="' + r.website + '" target="_blank">' + webHost + '</a>'
+    : '<span style="color:#ef4444;">No website</span>';
 
-  const staleness = (r.staleness_flags || []).map(f => `<span style="font-size:10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;padding:2px 7px;border-radius:4px;">${f}</span>`).join('');
+  const staleness = (r.staleness_flags || []).map(function(f) {
+    return '<span style="font-size:10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;padding:2px 7px;border-radius:4px;">' + f + '</span>';
+  }).join('');
 
-  return `
-    <div class="biz-card">
-      <div class="biz-header" onclick="this.parentElement.querySelector('.dims-row').style.display=this.parentElement.querySelector('.dims-row').style.display==='none'?'grid':'none'">
-        <div class="biz-rank">#${rank}</div>
-        <div class="biz-info">
-          <div class="biz-name">${r.name || 'Unknown'}</div>
-          <div class="biz-meta">
-            <span style="color:var(--amber);">${stars}</span> ${reviews}
-            &nbsp;·&nbsp; ${r.address || ''}
-            &nbsp;·&nbsp; ${r.phone || ''}
-          </div>
-          <div class="biz-meta" style="margin-top:2px;">${website} &nbsp;·&nbsp; Load: ${r.load_time || '?'}s &nbsp;·&nbsp; SSL: ${r.is_ssl ? '✓' : '✗'}</div>
-          ${staleness ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${staleness}</div>` : ''}
-          ${r.size_signals && r.size_signals.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">${r.size_signals.map(s => `<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600;">${s}</span>`).join('')}</div>` : ''}
-          ${r.size_tier === 'enterprise' ? '<div style="font-size:9px;color:#f87171;margin-top:3px;font-weight:600;">⚠ Enterprise — likely has in-house team</div>' : r.size_tier === 'mid' ? '<div style="font-size:9px;color:#f59e0b;margin-top:3px;font-weight:600;">◆ Mid-market — verify before enrichment</div>' : ''}
-          ${renderIntelPills(r)}
-        </div>
-        <div class="biz-right">
-          <div class="opp-score" style="color:${oppC};">${r.combined_score || r.website_score || 0}</div>
-          <div class="opp-label">Opportunity</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:3px;">
-            Web <strong style="color:var(--text)">${r.website_score||0}</strong>
-            &nbsp;·&nbsp;
-            ICP <strong style="color:var(--teal)">${r.icp_score||0}</strong>
-          </div>
-          <button onclick="toggleDetail(event, 'detail-${rank}')"
-            style="margin-top:8px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 10px;font-size:11px;cursor:pointer;width:100%;">
-            ▼ Details
-          </button>
-          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-            <a href="/r/${r.slug || rank - 1}" target="_blank" onclick="event.stopPropagation();"
-              style="background:none;border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;text-decoration:none;">
-              📄 Report
-            </a>
-            ${r.icp_tier === 'A' || r.icp_tier === 'B' ? '<button onclick="sendToHarvest(event, '' + (r.website||'').replace(/'/g,'') + '', '' + (r.name||'').replace(/'/g,'') + '')" style="background:rgba(0,196,212,0.1);border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">🌾 Enrich</button>' : ''}
-          </div>
-        </div>
-      </div>
-      <div id="detail-${rank}" style="display:none;border-top:1px solid var(--border);padding:14px 16px;">
-        <!-- Website score rings -->
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Website Score — ${r.website_score||0}/100</div>
-        <div class="dims-row" style="display:grid !important;">
-          ${renderDims(r.dimensions)}
-        </div>
-        <!-- ICP Intelligence -->
-        <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
-          <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">ICP Intelligence — ${r.icp_score||0}/100</div>
-          ${r.revenue_leak ? '<div style="font-size:10px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:4px 10px;border-radius:5px;margin-bottom:8px;border:1px solid rgba(239,68,68,0.2);">💸 REVENUE LEAK — ' + (r.revenue_leak_reason||'') + '</div>' : ''}
-          <div style="display:flex;flex-wrap:wrap;gap:4px;">
-            ${renderIntelPills(r)}
-            ${(r.icp_pills||[]).map(function(p){ return '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(0,196,212,0.08);color:#00c4d4;font-weight:600;">' + p + '</span>'; }).join('')}
-            ${(r.size_signals||[]).map(function(s){ return '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600;">' + s + '</span>'; }).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="dims-row" style="display:none;" style="display:none;">${renderDims(r.dimensions)}</div>
-    </div>`;
+  const sizeSignalsHtml = (r.size_signals || []).map(function(s) {
+    return '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600;">' + s + '</span>';
+  }).join('');
+
+  const sizeTierHtml = r.size_tier === 'enterprise'
+    ? '<div style="font-size:9px;color:#f87171;margin-top:3px;font-weight:600;">⚠ Enterprise — likely has in-house team</div>'
+    : r.size_tier === 'mid'
+    ? '<div style="font-size:9px;color:#f59e0b;margin-top:3px;font-weight:600;">◆ Mid-market — verify before enrichment</div>'
+    : '';
+
+  const enrichBtn = (r.icp_tier === 'A' || r.icp_tier === 'B')
+    ? '<button data-website="' + (r.website||'') + '" data-name="' + (r.name||'').replace(/"/g,'') + '" onclick="sendToHarvest(event, this.dataset.website, this.dataset.name)" style="background:rgba(0,196,212,0.1);border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">🌾 Enrich</button>'
+    : '';
+
+  const revLeakHtml = r.revenue_leak
+    ? '<div style="font-size:10px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);padding:4px 10px;border-radius:5px;margin-bottom:8px;border:1px solid rgba(239,68,68,0.2);">💸 REVENUE LEAK — ' + (r.revenue_leak_reason||'') + '</div>'
+    : '';
+
+  const icpPillsHtml = (r.icp_pills||[]).map(function(p) {
+    return '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(0,196,212,0.08);color:#00c4d4;font-weight:600;">' + p + '</span>';
+  }).join('');
+
+  const detailSizeHtml = (r.size_signals||[]).map(function(s) {
+    return '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.1);color:#818cf8;font-weight:600;">' + s + '</span>';
+  }).join('');
+
+  const reportSlug = r.slug || (rank - 1);
+
+  return '<div class="biz-card">' +
+    '<div class="biz-header">' +
+      '<div class="biz-rank">#' + rank + '</div>' +
+      '<div class="biz-info">' +
+        '<div class="biz-name">' + (r.name || 'Unknown') + '</div>' +
+        '<div class="biz-meta"><span style="color:var(--amber);">' + stars + '</span> ' + reviews + ' &nbsp;·&nbsp; ' + (r.address||'') + ' &nbsp;·&nbsp; ' + (r.phone||'') + '</div>' +
+        '<div class="biz-meta" style="margin-top:2px;">' + websiteHtml + ' &nbsp;·&nbsp; Load: ' + (r.load_time||'?') + 's &nbsp;·&nbsp; SSL: ' + (r.is_ssl ? '✓' : '✗') + '</div>' +
+        (staleness ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">' + staleness + '</div>' : '') +
+        (sizeSignalsHtml ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">' + sizeSignalsHtml + '</div>' : '') +
+        sizeTierHtml +
+      '</div>' +
+      '<div class="biz-right">' +
+        '<div class="opp-score" style="color:' + oppC + ';">' + (r.combined_score || r.website_score || 0) + '</div>' +
+        '<div class="opp-label">Opportunity</div>' +
+        '<div style="font-size:10px;color:var(--muted);margin-top:3px;">Web <strong style="color:var(--text)">' + (r.website_score||0) + '</strong> &nbsp;·&nbsp; ICP <strong style="color:var(--teal)">' + (r.icp_score||0) + '</strong></div>' +
+        '<button onclick="toggleDetail(event, 'detail-' + rank + '')" style="margin-top:8px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:3px 10px;font-size:11px;cursor:pointer;width:100%;">▼ Details</button>' +
+        '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">' +
+          '<a href="/r/' + reportSlug + '" target="_blank" onclick="event.stopPropagation();" style="background:none;border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 10px;font-size:11px;font-weight:600;text-decoration:none;">📄 Report</a>' +
+          enrichBtn +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div id="detail-' + rank + '" style="display:none;border-top:1px solid var(--border);padding:14px 16px;">' +
+      '<div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Website Score — ' + (r.website_score||0) + '/100</div>' +
+      '<div class="dims-row">' + renderDims(r.dimensions) + '</div>' +
+      '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">' +
+        '<div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">ICP Intelligence — ' + (r.icp_score||0) + '/100</div>' +
+        revLeakHtml +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px;">' +
+          renderIntelPills(r) +
+          icpPillsHtml +
+          detailSizeHtml +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
 }
 
 // ── SSE ───────────────────────────────────────────────────────────────────────
