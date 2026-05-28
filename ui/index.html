@@ -408,7 +408,7 @@ function renderCard(r, rank) {
     '</div>' +
     '<div id="detail-' + rank + '" style="display:none;border-top:1px solid var(--border);padding:14px 16px;">' +
       '<div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Website Score — ' + (r.website_score||0) + '/100</div>' +
-      '<!-- dims moved to detail panel -->' +
+      '<div class="dims-row" style="display:grid;">' + renderDims(r.dimensions) + '</div>' +
       '<div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">' +
         '<div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">ICP Intelligence — ' + (r.icp_score||0) + '/100</div>' +
         revLeakHtml +
