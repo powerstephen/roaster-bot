@@ -441,6 +441,127 @@ async def detect_size_signals(website: str, company_name: str) -> dict:
         "employee_estimate": employee_estimate,
     }
 
+
+def calculate_icp_score(audit: dict, biz: dict) -> dict:
+    """
+    Score a business against Eversite's ideal customer profile.
+    Returns icp_score 0-100 and breakdown dict.
+    
+    Ideal prospect:
+    - Website score 45-65 (needs help, has some investment)
+    - SMB size 10-50 employees
+    - Owner-led, no in-house marketing team
+    - Basic tech stack (not Salesforce/enterprise)
+    - Established business (20-200 reviews)
+    - Home services vertical
+    """
+    score = 0
+    breakdown = {}
+
+    # 1. Website sweet spot (30 pts)
+    ws = audit.get("website_score", 0)
+    if 45 <= ws <= 65:
+        website_pts = 30
+    elif 35 <= ws < 45 or 65 < ws <= 75:
+        website_pts = 20
+    elif 25 <= ws < 35 or 75 < ws <= 85:
+        website_pts = 10
+    else:
+        website_pts = 0
+    score += website_pts
+    breakdown["website_fit"] = website_pts
+
+    # 2. Company size (25 pts)
+    size_tier = audit.get("size_tier", "unknown")
+    if size_tier == "smb":
+        size_pts = 25
+    elif size_tier == "micro":
+        size_pts = 15
+    elif size_tier == "mid":
+        size_pts = 10
+    elif size_tier == "enterprise":
+        size_pts = 0
+    else:
+        # Use reviews as proxy
+        rv = biz.get("reviews", 0)
+        if 20 <= rv <= 200:
+            size_pts = 20
+        elif rv < 20:
+            size_pts = 10
+        else:
+            size_pts = 5
+    score += size_pts
+    breakdown["size_fit"] = size_pts
+
+    # 3. Marketing signals (15 pts)
+    # No marketing team = high opportunity for Eversite
+    size_signals = audit.get("size_signals", [])
+    has_marketing = any("marketing" in s.lower() for s in size_signals)
+    has_hiring = any("hiring" in s.lower() for s in size_signals)
+    
+    if not has_marketing and not has_hiring:
+        marketing_pts = 15  # No marketing team = Eversite can own it
+    elif has_hiring and not has_marketing:
+        marketing_pts = 10  # Growing but no marketing yet
+    else:
+        marketing_pts = 5   # Already has marketing function
+    score += marketing_pts
+    breakdown["marketing_opportunity"] = marketing_pts
+
+    # 4. Tech stack signals (15 pts)
+    # Basic tech = no in-house capability = needs Eversite
+    dims = audit.get("dimensions", {})
+    tech_score = dims.get("tech", {}).get("score", 5) if dims else 5
+    has_enterprise_tech = any("salesforce" in s.lower() or "hubspot" in s.lower() 
+                               for s in size_signals)
+    
+    if has_enterprise_tech:
+        tech_pts = 5   # Has tools, maybe has team too
+    elif tech_score <= 3:
+        tech_pts = 15  # Very basic = high opportunity
+    elif tech_score <= 6:
+        tech_pts = 10  # Some tools but not sophisticated
+    else:
+        tech_pts = 5
+    score += tech_pts
+    breakdown["tech_opportunity"] = tech_pts
+
+    # 5. Business quality (15 pts)
+    # Established enough to have budget
+    rv = biz.get("reviews", 0)
+    r = biz.get("rating", 0)
+    if 20 <= rv <= 300 and r >= 4.0:
+        quality_pts = 15  # Established, good reputation
+    elif rv >= 10 and r >= 3.5:
+        quality_pts = 10
+    elif rv > 0:
+        quality_pts = 5
+    else:
+        quality_pts = 3   # No reviews = unknown
+    score += quality_pts
+    breakdown["business_quality"] = quality_pts
+
+    # ICP tier label
+    if score >= 80:
+        icp_tier = "A"
+        icp_label = "🎯 Perfect ICP"
+    elif score >= 65:
+        icp_tier = "B"
+        icp_label = "✅ Good ICP"
+    elif score >= 45:
+        icp_tier = "C"
+        icp_label = "⚡ Possible"
+    else:
+        icp_tier = "D"
+        icp_label = "✗ Poor fit"
+
+    return {
+        "icp_score": score,
+        "icp_tier": icp_tier,
+        "icp_label": icp_label,
+        "icp_breakdown": breakdown,
+    }
+
 async def run_roaster(industry: str, location: str, limit: int, api_key: str, log_cb=None) -> list[dict]:
     async def log(msg):
         if log_cb:
@@ -520,15 +641,19 @@ async def run_roaster(industry: str, location: str, limit: int, api_key: str, lo
         # size_fit: are they the right size?
         priority = int(website_fit * 0.5 + bq * 0.3 + size_fit * 0.2)
 
+        # ICP score
+        icp = calculate_icp_score(audit, biz)
+
         results.append({
             **biz, **audit,
             "biz_quality": bq,
             "priority_score": priority,
             "website_fit": website_fit,
             "size_fit": size_fit,
+            **icp,
         })
         await asyncio.sleep(0.3)
 
-    results.sort(key=lambda x: x["priority_score"], reverse=True)
+    results.sort(key=lambda x: (x["icp_score"], x["priority_score"]), reverse=True)
     await log(f"Done — {len(results)} businesses scored across 58 signals")
     return results
