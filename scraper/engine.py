@@ -353,6 +353,116 @@ async def audit_url(url: str) -> dict:
 
 
 
+
+async def detect_intelligence_signals(html: str, website_score: int) -> dict:
+    """
+    Detect commercial intelligence signals from page HTML.
+    Returns signals, pills, and revenue leak indicators.
+    No extra API calls — works from already-fetched HTML.
+    """
+    if not html:
+        return {"intel_pills": [], "intel_signals": {}, "revenue_leak": False, "revenue_leak_reason": ""}
+
+    h = html.lower()
+    signals = {}
+    pills = []
+    revenue_leak = False
+    revenue_leak_reasons = []
+
+    # ── Ad Spend Detection ──────────────────────────────────────────────
+    running_ads = []
+
+    if any(x in h for x in ["googleadservices.com", "google_conversion", "gtag('event'", "aw-", "adwords"]):
+        running_ads.append("Google Ads")
+        signals["google_ads"] = True
+        pills.append({"label": "Google Ads", "color": "blue", "icon": "📢"})
+
+    if any(x in h for x in ["connect.facebook.net/en_us/fbevents", "fbq('init'", "facebook pixel"]):
+        running_ads.append("Meta Ads")
+        signals["meta_ads"] = True
+        pills.append({"label": "Meta Ads", "color": "blue", "icon": "📢"})
+
+    if "bat.bing.com" in h or "uetq" in h:
+        running_ads.append("Bing Ads")
+        signals["bing_ads"] = True
+        pills.append({"label": "Bing Ads", "color": "blue", "icon": "📢"})
+
+    if "tiktok" in h and ("ttq" in h or "analytics.tiktok" in h):
+        running_ads.append("TikTok Ads")
+        signals["tiktok_ads"] = True
+        pills.append({"label": "TikTok Ads", "color": "blue", "icon": "📢"})
+
+    # Revenue leak — running ads + bad website
+    if running_ads and website_score < 65:
+        revenue_leak = True
+        revenue_leak_reasons.append(f"Running {' + '.join(running_ads)} with weak website")
+        pills.append({"label": "💸 Revenue Leak", "color": "red", "icon": "💸"})
+
+    # ── Analytics & Tracking ────────────────────────────────────────────
+    if any(x in h for x in ["gtag('config', 'g-", "ga4", "googletagmanager.com/gtm"]):
+        signals["ga4"] = True
+        pills.append({"label": "GA4", "color": "green", "icon": "📊"})
+    elif any(x in h for x in ["google-analytics.com/analytics.js", "ua-"]):
+        signals["ga_ua"] = True
+        pills.append({"label": "GA (old)", "color": "amber", "icon": "📊"})
+
+    if "googletagmanager.com" in h:
+        signals["gtm"] = True
+        pills.append({"label": "Tag Manager", "color": "green", "icon": "🏷"})
+
+    if any(x in h for x in ["hotjar.com", "hj('create'", "_hjSettings"]):
+        signals["hotjar"] = True
+        pills.append({"label": "Hotjar", "color": "green", "icon": "🔥"})
+
+    # ── CRM & Marketing Tools ────────────────────────────────────────────
+    if any(x in h for x in ["hubspot.com", "hs-scripts.com", "_hsq"]):
+        signals["hubspot"] = True
+        pills.append({"label": "HubSpot", "color": "orange", "icon": "🔧"})
+
+    if "salesforce" in h and ("force.com" in h or "pardot" in h):
+        signals["salesforce"] = True
+        pills.append({"label": "Salesforce", "color": "blue", "icon": "☁️"})
+
+    if any(x in h for x in ["intercom.io", "intercomcdn", "window.intercom"]):
+        signals["intercom"] = True
+        pills.append({"label": "Intercom", "color": "purple", "icon": "💬"})
+
+    if any(x in h for x in ["drift.com", "driftt.com"]):
+        signals["drift"] = True
+        pills.append({"label": "Drift", "color": "purple", "icon": "💬"})
+
+    if any(x in h for x in ["mailchimp.com", "chimpified", "mc.js"]):
+        signals["mailchimp"] = True
+        pills.append({"label": "Mailchimp", "color": "amber", "icon": "📧"})
+
+    # ── Booking & Conversion ─────────────────────────────────────────────
+    if any(x in h for x in ["calendly.com", "cal.com/embed", "acuityscheduling"]):
+        signals["booking_tool"] = True
+        pills.append({"label": "Online Booking", "color": "green", "icon": "📅"})
+
+    if any(x in h for x in ["callrail.com", "calltracking"]):
+        signals["call_tracking"] = True
+        pills.append({"label": "Call Tracking", "color": "green", "icon": "📞"})
+
+    if any(x in h for x in ["trustpilot.com/widget", "reviews.io", "birdeye"]):
+        signals["review_widget"] = True
+        pills.append({"label": "Review Widget", "color": "green", "icon": "⭐"})
+
+    # ── No tracking at all = dark = opportunity ──────────────────────────
+    has_any_tracking = signals.get("ga4") or signals.get("ga_ua") or signals.get("gtm") or running_ads
+    if not has_any_tracking:
+        signals["no_tracking"] = True
+        pills.append({"label": "No Analytics", "color": "red", "icon": "🔴"})
+        revenue_leak_reasons.append("No tracking — flying blind")
+
+    return {
+        "intel_pills": pills,
+        "intel_signals": signals,
+        "running_ads": running_ads,
+        "revenue_leak": revenue_leak,
+        "revenue_leak_reason": " · ".join(revenue_leak_reasons),
+    }
+
 async def detect_size_signals(website: str, company_name: str) -> dict:
     """
     Detect company size signals from website content.
@@ -555,8 +665,21 @@ def calculate_icp_score(audit: dict, biz: dict) -> dict:
         icp_tier = "D"
         icp_label = "✗ Poor fit"
 
+    # Ad spend bonus — running ads with bad website = highest priority
+    running_ads = audit.get("running_ads", [])
+    if running_ads and website_pts <= 20:
+        ad_bonus = 15
+        score = min(100, score + ad_bonus)
+        breakdown["ad_spend_bonus"] = ad_bonus
+    elif running_ads:
+        ad_bonus = 8
+        score = min(100, score + ad_bonus)
+        breakdown["ad_spend_bonus"] = ad_bonus
+
     # Build explanation pills
     pills = []
+    if running_ads: pills.append(f"Running {'+'.join(running_ads)}")
+    if audit.get("revenue_leak"): pills.append("💸 Revenue leak")
     if website_pts >= 20: pills.append("Sweet spot website")
     elif website_pts == 0: pills.append("Website out of range")
     if size_pts >= 20: pills.append("SMB size ✓")
@@ -608,6 +731,19 @@ async def run_roaster(industry: str, location: str, limit: int, api_key: str, lo
         # Size signal detection from website content
         size_signals = await detect_size_signals(biz.get("website", ""), biz.get("name", ""))
         audit.update(size_signals)
+
+        # Intelligence signals from HTML (already fetched in audit_url)
+        # Re-fetch is cheap since it's cached by the OS/connection pool
+        try:
+            import httpx as _httpx
+            _h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            async with _httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as _c:
+                _r = await _c.get(biz.get("website", ""), headers=_h)
+                _html = _r.text
+        except Exception:
+            _html = ""
+        intel = await detect_intelligence_signals(_html, audit.get("website_score", 0))
+        audit.update(intel)
 
         # Business quality score from reviews/rating
         bq = 0
