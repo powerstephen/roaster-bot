@@ -279,6 +279,7 @@ function renderCard(r, rank) {
           <div class="opp-score" style="color:${oppC};">${r.website_score ?? r.opportunity_score ?? 0}</div>
           <div class="opp-label">Website Score / 100</div>
           <span class="grade-badge" style="${gradeStyle(r.grade || '')}">${r.grade || ''}</span>
+          ${r.priority_score >= 80 ? '<div style="margin-top:6px;font-size:9px;font-weight:700;background:rgba(16,185,129,0.15);color:#10b981;padding:2px 8px;border-radius:4px;letter-spacing:0.5px;">🎯 SWEET SPOT</div>' : r.priority_score >= 60 ? '<div style="margin-top:6px;font-size:9px;font-weight:700;background:rgba(245,158,11,0.12);color:#f59e0b;padding:2px 8px;border-radius:4px;">GOOD FIT</div>' : '<div style="margin-top:6px;font-size:9px;color:var(--muted);padding:2px 0;">Priority: ${r.priority_score||0}</div>'}
           <a href="/r/${r.slug || rank - 1}" target="_blank" onclick="event.stopPropagation();"
             style="display:inline-block;margin-top:8px;background:none;border:1px solid var(--teal);border-radius:6px;color:var(--teal);padding:4px 12px;font-size:11px;font-weight:600;text-decoration:none;">
             📄 View Report

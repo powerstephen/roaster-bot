@@ -376,7 +376,7 @@ async def run_roaster(industry: str, location: str, limit: int, api_key: str, lo
         await log(f"  [{i}/{len(businesses)}] {biz['name']}")
         audit = await audit_url(biz.get("website", ""))
 
-        # Business quality score (used for ranking priority)
+        # Business quality score from reviews/rating
         bq = 0
         r, rv = biz.get("rating", 0), biz.get("reviews", 0)
         if rv >= 200: bq += 25
@@ -387,9 +387,43 @@ async def run_roaster(industry: str, location: str, limit: int, api_key: str, lo
         elif r >= 4.3: bq += 12
         elif r >= 4.0: bq += 6
 
-        # Priority = good business + bad website
-        priority = int(bq * 0.4 + audit["opportunity_score"] * 0.6)
-        results.append({**biz, **audit, "biz_quality": bq, "priority_score": priority})
+        # Sweet spot scoring — ideal prospect is in the middle
+        # Website score 45-65 = sweet spot (needs help but has some investment)
+        # Too low (0-30) = probably no budget
+        # Too high (70+) = already sorted or has in-house team
+        ws = audit.get("website_score", 0)
+        SWEET_SPOT = 55  # centre of ideal range
+        IDEAL_RANGE = 15  # +/- from centre = full score
+        distance = abs(ws - SWEET_SPOT)
+        if distance <= IDEAL_RANGE:
+            website_fit = 100
+        elif distance <= IDEAL_RANGE * 2:
+            website_fit = 100 - (distance - IDEAL_RANGE) * 5
+        else:
+            website_fit = max(0, 100 - (distance - IDEAL_RANGE) * 8)
+
+        # Size signal from reviews (proxy for company size)
+        # 20-200 reviews = sweet spot (established but not huge)
+        if 20 <= rv <= 200:
+            size_fit = 100
+        elif rv < 20:
+            size_fit = max(40, rv * 3)  # too small/unknown
+        else:
+            size_fit = max(50, 100 - (rv - 200) // 10)  # too big
+
+        # Combined sweet spot priority
+        # website_fit: are they in the right zone to need + afford help?
+        # biz_quality: are they a real established business?
+        # size_fit: are they the right size?
+        priority = int(website_fit * 0.5 + bq * 0.3 + size_fit * 0.2)
+
+        results.append({
+            **biz, **audit,
+            "biz_quality": bq,
+            "priority_score": priority,
+            "website_fit": website_fit,
+            "size_fit": size_fit,
+        })
         await asyncio.sleep(0.3)
 
     results.sort(key=lambda x: x["priority_score"], reverse=True)
