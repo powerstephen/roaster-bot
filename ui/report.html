@@ -187,25 +187,52 @@ body { font-family: 'Montserrat', sans-serif; background: #1e1e1e; color: var(--
 .cta-powered span { color: var(--teal); }
 
 @media print {
-  /* Force all backgrounds and colours to print exactly as shown on screen */
   * { 
     -webkit-print-color-adjust: exact !important; 
     print-color-adjust: exact !important;
     color-adjust: exact !important;
   }
   
-  /* Keep dark theme - do NOT flip to white */
   body { background: #1e1e1e !important; color: #e2e8f0 !important; }
   .wrap { background: #0a0a0a !important; }
-  
-  /* Header - already #141414, force it to print */
   .header { background: #141414 !important; }
   
-  /* Page setup */
-  @page { margin: 10mm; size: A4; }
+  /* Page setup - no margins so no white bars */
+  @page { margin: 0; size: A4; }
+  @page :first { margin: 0; }
   
-  /* Avoid breaking cards across pages */
-  .dim-card, .issue-card, .pricing-card, .case-card { page-break-inside: avoid; }
+  /* Add internal padding to wrap instead */
+  .wrap { padding: 0 !important; }
+  
+  /* Smart page breaks - keep sections together */
+  .header { page-break-after: avoid; }
+  .hero { page-break-after: always; }
+  
+  /* Score section stays together */
+  .score-section { page-break-inside: avoid; }
+  
+  /* Dim cards grid - never break inside a card */
+  .dim-card { page-break-inside: avoid !important; }
+  .dims-grid { page-break-inside: avoid; }
+  
+  /* Issues - each card stays whole */
+  .issue-card { page-break-inside: avoid !important; margin-bottom: 8px; }
+  
+  /* Case studies section starts fresh page */
+  .cases-section { page-break-before: always; }
+  
+  /* Cashflow table stays together */
+  .cashflow-section { page-break-inside: avoid; }
+  
+  /* Pricing section starts fresh page */
+  .pricing-section { page-break-before: always; page-break-inside: avoid; }
+  .pricing-card { page-break-inside: avoid !important; }
+  
+  /* Why section */
+  .why-section { page-break-inside: avoid; }
+  
+  /* Footer at bottom */
+  .footer { page-break-before: avoid; }
   
   /* Hide buttons */
   button, .cta-btn, .pricing-btn-filled, .pricing-btn-outline { display: none !important; }
