@@ -187,45 +187,28 @@ body { font-family: 'Montserrat', sans-serif; background: #1e1e1e; color: var(--
 .cta-powered span { color: var(--teal); }
 
 @media print {
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  /* Force all backgrounds and colours to print exactly as shown on screen */
+  * { 
+    -webkit-print-color-adjust: exact !important; 
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
   
-  body { background: #fff !important; color: #000 !important; font-size: 11pt; }
+  /* Keep dark theme - do NOT flip to white */
+  body { background: #1e1e1e !important; color: #e2e8f0 !important; }
+  .wrap { background: #0a0a0a !important; }
   
-  /* Black header */
-  .header { background: #000 !important; color: #fff !important; padding: 16px 32px !important; border-bottom: none !important; }
-  .header * { color: #fff !important; }
+  /* Header - already #141414, force it to print */
+  .header { background: #141414 !important; }
   
-  /* Hero section - keep dark */
-  .hero { background: #111 !important; -webkit-print-color-adjust: exact !important; page-break-after: avoid; }
+  /* Page setup */
+  @page { margin: 10mm; size: A4; }
   
-  /* Score rings - keep colours */
-  .ring-track, .ring-fill { -webkit-print-color-adjust: exact !important; }
+  /* Avoid breaking cards across pages */
+  .dim-card, .issue-card, .pricing-card, .case-card { page-break-inside: avoid; }
   
-  /* Cards - white background with border */
-  .card { background: #fff !important; border: 1px solid #ddd !important; page-break-inside: avoid; }
-  
-  /* Section titles */
-  .section-title { color: #000 !important; border-bottom: 2px solid #000 !important; }
-  
-  /* Muted text */
-  .muted, [style*="color: #"] { color: #444 !important; }
-  
-  /* Teal accents - keep for printed colour */
-  .teal { color: #008a94 !important; }
-  
-  /* Page breaks */
-  .dimensions-section { page-break-before: always; }
-  .recommendations-section { page-break-before: always; }
-  
-  /* Footer */
-  .footer { background: #000 !important; color: #fff !important; }
-  .footer * { color: #fff !important; }
-  
-  /* Hide interactive elements */
-  button, .btn, [onclick] { display: none !important; }
-  
-  /* Page margins */
-  @page { margin: 15mm 15mm 15mm 15mm; size: A4; }
+  /* Hide buttons */
+  button, .cta-btn, .pricing-btn-filled, .pricing-btn-outline { display: none !important; }
 }
 </style>
 </head>
